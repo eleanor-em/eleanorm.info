@@ -1,0 +1,70 @@
+body {
+    background-color: #0f111a;
+    color: #c3cee3;
+    font-family: 'Baloo Tamma 2', cursive;
+    font-size: 12pt;
+}
+
+div.container {
+    margin-left: auto;
+    margin-right: auto;
+    width: min(90vw, 60em);
+}
+
+span.name {
+    font-size: 36pt;
+}
+
+header {
+    width: 100%;
+    border-bottom: 1px solid #82aaff;
+    padding-bottom: 0.5em;
+    display: inline-block;
+    text-align: center;
+}
+
+footer {
+    border-top: 1px solid #82aaff;
+    padding-top: 0.5em;
+    display: inline-block;
+    width: 100%;
+}
+
+img.portrait {
+    border-radius: 50%;
+    width: 10vw;
+    vertical-align: middle;
+}
+
+div.menu {
+    text-align: center;
+}
+
+a:link, a:visited {
+    color: inherit;
+}
+
+a:hover {
+    color: #88c0d0;
+}
+
+strong {
+    padding-left: 0.1em;
+    padding-right: 0.1em;
+}
+
+ul {
+    list-style-type: circle;
+}
+
+ul.main-list {
+    list-style-type: none;
+}
+
+ul.sublist {
+    list-style-type: disc;
+}
+
+span.pub-venue {
+    font-style: italic;
+}
