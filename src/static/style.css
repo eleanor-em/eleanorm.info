@@ -31,9 +31,11 @@ footer {
 
 img.portrait {
     border-radius: 50%;
-    width: min(100px, 10vw);
+    max-width: min(100px, 10vw);
     vertical-align: middle;
 }
+
+
 
 div.menu {
     text-align: center;
