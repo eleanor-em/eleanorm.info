@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html charset="utf-8">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body>
+        <h2>Lamport's Logical Time</h2>
+        <button id='toggler' onclick='start()'>Start!</button>
+        <br>
+        <div style="display: flex; flex-direction: row;">
+            <span><canvas width="1200" height="1000" id="canvas"></canvas></span>
+            <p id="text-display" style="font-family: 'Courier New', Courier, monospace; height: 800px; overflow-y: scroll; min-width: 600px;"></p>
+        </div>
+        <script>
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            const evRate = 0.2;
+            const msgRate = 0.7;
+            const xOffset = 50;
+
+            let logicalA = 0;
+            let logicalB = 0;
+            let logicalC = 0;
+
+            let t = 0;
+            const timeStep = 40;
+            let events = [];
+            let stop = false;
+            let newMessages = true;
+
+            const maxDelay = timeStep * 4;
+            const minDelay = timeStep;
+
+            let interval;
+            function start() {
+                window.clearInterval(interval);
+                logicalA = 0;
+                logicalB = 0;
+                logicalC = 0;
+                t = 0;
+                events = [];
+                stop = false;
+                newMessages = true;
+                interval = window.setInterval(step, 500);
+            }
+
+            function step() {
+                if (Math.random() < evRate) {
+                    // generate an event
+                    let src;
+                    let logical;
+
+                    switch (Math.floor(3 * Math.random())) {
+                        case 0:
+                            src = 'A';
+                            logicalA += 1;
+                            logical = logicalA;
+                            break;
+                        case 1:
+                            src = 'B';
+                            logicalB += 1;
+                            logical = logicalB;
+                            break;
+                        case 2:
+                            src = 'C';
+                            logicalC += 1;
+                            logical = logicalC;
+                            break;
+                    }
+                    const event = { src, t, id: events.length };
+
+                    // test if message
+                    if (newMessages && Math.random() < msgRate) {
+                        let dest = src;
+                        while (dest == src) {
+                            switch (Math.floor(3 * Math.random())) {
+                                case 0:
+                                    dest = 'A';
+                                    break;
+                                case 1:
+                                    dest = 'B';
+                                    break;
+                                case 2:
+                                    dest = 'C';
+                                    break;
+                            }
+                        }
+
+                        const delay = minDelay + Math.random() * (maxDelay - minDelay);
+                        event.dest = dest;
+                        event.tPrime = t + delay;
+                        event.destId = events.length + 1;
+                        events.push(event);
+                        events.push({ src: dest, t: t + delay, id: events.length, logical  });
+                    } else {
+                        events.push(event);
+                    }
+                }
+
+                // check for new receive events
+                events.filter(event => event.t > t && event.t < t + timeStep)
+                      .filter(event => event.logical)
+                      .forEach(event => {
+                          switch (event.src) {
+                                case 'A':
+                                    if (logicalA < event.logical) {
+                                        logicalA = event.logical;
+                                    }
+                                    logicalA += 1;
+                                    break;
+                                case 'B':
+                                    if (logicalB < event.logical) {
+                                        logicalB = event.logical;
+                                    }
+                                    logicalB += 1;
+                                    break;
+                                case 'C':
+                                    if (logicalC < event.logical) {
+                                        logicalC = event.logical;
+                                    }
+                                    logicalC += 1;
+                                    break;
+                          }
+                      })
+
+                t += timeStep;
+                if (t > w - maxDelay - 2 * xOffset) {
+                    newMessages = false;
+                }
+                if (t > w - xOffset) {
+                    window.clearInterval(interval);
+                }
+
+                render();
+
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, w, h);
+                const lineAY = 200;
+                const lineBY = 500;
+                const lineCY = 800;
+                const colA = '#e57e39';
+                const colB = '#73a1e6';
+                const colC = '#c2f200';
+
+                const evRadius = 8;
+
+                ctx.strokeStyle = 'black';
+                ctx.font = '30px Arial';
+
+                ctx.fillStyle = colA;
+                ctx.fillText('A', 0, lineAY + 8);
+                ctx.fillText(logicalA, w - xOffset + 4, lineAY + 8);
+                ctx.beginPath();
+                ctx.moveTo(xOffset, lineAY);
+                ctx.lineTo(w - xOffset, lineAY);
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.fillStyle = colB;
+                ctx.fillText('B', 0, lineBY + 8);
+                ctx.fillText(logicalB, w - xOffset + 4, lineBY + 8);
+                ctx.beginPath();
+                ctx.moveTo(xOffset, lineBY);
+                ctx.lineTo(w - xOffset, lineBY);
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.fillStyle = colC;
+                ctx.fillText('C', 0, lineCY + 8);
+                ctx.fillText(logicalC, w - xOffset + 4, lineCY + 8);
+                ctx.beginPath();
+                ctx.moveTo(xOffset, lineCY);
+                ctx.lineTo(w - xOffset, lineCY);
+                ctx.stroke();
+                ctx.closePath();
+
+                if (!stop) {
+                    ctx.strokeStyle = 'red';
+                    ctx.beginPath();
+                    ctx.moveTo(xOffset + t, 0);
+                    ctx.lineTo(xOffset + t, h);
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+
+                for (const event of events) {
+                    let y;
+                    switch (event.src) {
+                        case 'A':
+                            ctx.fillStyle = colA;
+                            y = lineAY;
+                            break;
+                        case 'B':
+                            ctx.fillStyle = colB;
+                            y = lineBY;
+                            break;
+                        case 'C':
+                            ctx.fillStyle = colC;
+                            y = lineCY;
+                            break;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(xOffset + event.t, y, evRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    ctx.fillText(event.id, xOffset + event.t - 8, y - 10);
+
+                    ctx.strokeStyle = ctx.fillStyle;
+
+                    const y0 = y;
+
+                    if (event.dest) {
+                        switch (event.dest) {
+                            case 'A':
+                                ctx.fillStyle = colA;
+                                y = lineAY;
+                                break;
+                            case 'B':
+                                ctx.fillStyle = colB;
+                                y = lineBY;
+                                break;
+                            case 'C':
+                                ctx.fillStyle = colC;
+                                y = lineCY;
+                                break;
+                        }
+
+                        ctx.beginPath();
+                        ctx.moveTo(xOffset + event.t, y0);
+                        ctx.lineTo(xOffset + event.tPrime, y);
+                        ctx.stroke();
+                        ctx.closePath();
+                    }
+                }
+
+                inferHappenedBefore();
+            }
+            
+            function inferHappenedBefore() {
+                let happenedBefores = [];
+                let target;
+                let seen;
+
+                const sortedEvents = events.sort((a, b) => a.t - b.t);
+                
+                // Find happened-before relations on each line
+                target = 'A';
+                seen = [];
+                for (const event of sortedEvents) {
+                    if (event.src == target) {
+                        if (seen.length > 0) {
+                            for (const before of seen) {
+                                happenedBefores.push([before.id, event.id]);
+                            }
+                        }
+                        seen.push(event)
+                        if (event.destId) {
+                            happenedBefores.push([event.id, event.destId]);
+                        }
+                    }
+                }
+
+                target = 'B';
+                seen = [];
+                for (const event of sortedEvents) {
+                    if (event.src == target) {
+                        if (seen.length > 0) {
+                            for (const before of seen) {
+                                happenedBefores.push([before.id, event.id]);
+                            }
+                        }
+                        seen.push(event)
+                        if (event.destId) {
+                            happenedBefores.push([event.id, event.destId]);
+                        }
+                    }
+                }
+
+                target = 'C';
+                seen = [];
+                for (const event of sortedEvents) {
+                    if (event.src == target) {
+                        if (seen.length > 0) {
+                            for (const before of seen) {
+                                happenedBefores.push([before.id, event.id]);
+                            }
+                        }
+                        seen.push(event)
+                        if (event.destId) {
+                            happenedBefores.push([event.id, event.destId]);
+                        }
+                    }
+                }
+
+                const display = document.getElementById('text-display');
+                display.innerHTML = 'Happened-before relations:<br><br>';
+                const toShow = {};
+                for (const rel of happenedBefores) {
+                    if (!(rel[0] in toShow)) {
+                        toShow[rel[0]] = {};
+                    }
+                    toShow[rel[0]][rel[1]] = true;
+                }
+
+                // complete transitivity
+                let added;
+                do {
+                    added = false;
+                    for (const key in toShow) {
+                        const preLength = Object.keys(toShow[key]).length;
+                        for (const dest in toShow[key]) {
+                            for (const nextDest in toShow[dest]) {
+                                toShow[key][nextDest] = true;
+                            }
+                        }
+                        if (Object.keys(toShow[key]).length > preLength) {
+                            added = true;
+                        }
+                    }
+                } while (added);
+
+                for (const key in toShow) {
+                    display.innerHTML += `${key}: `;
+                    for (const dest in toShow[key]) {
+                        display.innerHTML += `${dest}, `;
+                    }
+                    display.innerHTML += '<br>';
+                }
+            }
+
+            step();
+        </script>
+    </body>
+</html>

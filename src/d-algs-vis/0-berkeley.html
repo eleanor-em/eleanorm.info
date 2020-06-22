@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html charset="utf-8">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body>
+        <h2>Berkeley clock synchronisation</h2>
+        <button id='toggler' onclick='toggle()'>Start Sync</button><br>
+        <canvas width="800" height="800" id="canvas"></canvas>
+        <script>
+            const ctx = document.getElementById('canvas').getContext('2d');
+            let sync = false;
+
+            function toggle() {
+                if (!sync) {
+                    sync = true;
+                    t = 0;
+                    document.getElementById('toggler').innerHTML = 'Stop Sync';
+                } else {
+                    sync = false;
+                    document.getElementById('toggler').innerHTML = 'Start Sync';
+                }
+            }
+
+            class Process {
+                constructor(x, y, r, colour='#22dddd') {
+                    this.x = x; this.y = y; this.r = r;
+                    this.colour = colour;
+                    this.clock = Math.floor(Math.random() * 8);
+                    this.clockRate = (1 + Math.random()) / (1000 / 16);
+                    this.roundtrip = (Math.random() * 200) / 1000;
+                    this.waiting = false;
+                    this.showing = false;
+                    this.showFor = 0;
+                }
+
+
+                step() {
+                    if (this.adjust && !this.showing) {
+                        this.showing = true;
+                        this.showFor = 1000 / 16;
+                        this.adjust = Math.round(this.adjust);
+                        if (this.adjust >= 0) {
+                            this.adjust = `+${this.adjust}`;
+                        }
+                    }
+                    --this.showFor;
+                    if (this.showFor <= 0) {
+                        this.showing = false;
+                        this.adjust = null;
+                    }
+                    this.clock += this.clockRate;
+                }
+
+                render() {
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 1;
+                    ctx.fillStyle = this.colour;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    ctx.font = '25px Arial';
+                    ctx.fillStyle = 'black';
+                    ctx.fillText(Math.floor(this.clock),
+                        this.x - this.r / 2, this.y + this.r / 3);
+
+                    if (this.showing) {
+                        ctx.fillStyle = 'red';
+                        ctx.fillText(this.adjust,
+                            this.x - this.r * 0.4, this.y - this.r * 1.2);
+                    }
+                }
+
+                queryTimes(t, followers) {
+                    this.queriedAt = t;
+                    this.waiting = true;
+                    this.times = followers.map(f => f.clock + f.roundtrip);
+                    this.maxDelay = Math.max(...followers.map(f => f.roundtrip));
+                }
+
+                sendUpdates(t, followers) {
+                    if (this.waiting && t >= this.queriedAt + this.maxDelay) {
+                        let newTime = this.clock;
+                        for (const time of this.times) {
+                            newTime += time;
+                        }
+                        newTime /= followers.length + 1;
+                        console.log(newTime);
+
+                        for (let i = 0; i < followers.length; ++i) {
+                            followers[i].adjust = newTime - followers[i].clock;
+                            followers[i].clock = newTime;
+                        }
+                        this.clock = newTime;
+                        this.adjust = newTime - this.clock;
+
+                        this.waiting = false;
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+
+            const leader = new Process(400, 100, 30, '#DD8C1F');
+            const followers = [
+                new Process(100, 300, 30),
+                new Process(400, 300, 30),
+                new Process(700, 300, 30),
+            ]
+
+            let t = 0;
+            let showFor = 0;
+
+            function step() {
+                ctx.clearRect(0, 0, 800, 800);
+
+                leader.step();
+                followers.forEach(f => f.step());
+
+                leader.render();
+                followers.forEach(f => f.render());
+
+                if (sync) {
+                    if (t % Math.round(5 * (1000 / 16)) == 0) {
+                        leader.queryTimes(t, followers)
+                    }
+                    if (leader.sendUpdates(t, followers)) {
+                        showFor = 1000 / 16;
+                    }
+
+                    if (showFor > 0) {
+                        ctx.fillStyle = 'red';
+                        ctx.fillText("sync'd!", 400, 200);
+                        --showFor;
+                    }
+                }
+
+                ++t;
+            }
+
+            window.setInterval(step, 16);
+        </script>
+    </body>
+</html>

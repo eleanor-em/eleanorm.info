@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html charset="utf-8">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body>
+        <h2>Network Time Protocol</h2>
+        <button id='toggler' onclick='step()'>Step</button>
+        <br>
+        <div style="display: flex; flex-direction: row;">
+            <span><canvas width="700" height="800" id="canvas"></canvas></span>
+            <p id="text-display" style="font-family: 'Courier New', Courier, monospace; height: 800px; overflow-y: scroll; min-width: 600px;"></p>
+        </div>
+        <script>
+            const timeScale = 30;
+            const pingRate = 5;
+            const delayScale = 5;
+            const ctx = document.getElementById('canvas').getContext('2d');
+
+            let steps = 0;
+            let t0 = Math.random() * 5 * timeScale;
+            let t1 = Math.random() * 5 * timeScale;
+
+            let rate0 = (1 + Math.random()) * timeScale;
+            let rate1 = (1 + Math.random()) * timeScale;
+
+            let stamps = [];
+            let lastOffset = -1;
+            let shouldReset = false;
+
+            function step() {
+                console.log(`Step ${steps}`);
+                ++steps;
+                t0 += rate0;
+                t1 += rate1;
+
+                if (steps % pingRate == 0) {
+                    if (shouldReset) {
+                        stamps = [];
+                        shouldReset = false;
+                    }
+
+                    // Send request
+                    let time = t0;
+                    stamps.push(time);
+                    time += Math.random() * timeScale * delayScale;
+                    stamps.push(time);
+
+                    // Send reply
+                    time += Math.random() * timeScale * delayScale;
+                    stamps.push(time);
+                    time += Math.random() * timeScale * delayScale;
+                    stamps.push(time);
+                    t1 += time - t0;
+                    t0 = time;
+                }
+
+                const para = document.getElementById('text-display');
+                para.innerHTML = '';
+
+                let minDelay = 1000;
+                let minOffset = 1000;
+
+                for (let i = 0; i + 3 < stamps.length; ++i) {
+                    const delay = stamps[i + 1] - stamps[i] + stamps[i + 3] - stamps[i + 2];
+                    const offset = (stamps[i + 1] - stamps[i] + stamps[i + 2] - stamps[i + 3]) / 2;
+                    const delayCalc = `d_${i + 3} = T_${i + 1} - T_${i} + T_${i + 3} - T_${i + 2}`;
+                    const offsetCalc = `c_${i + 3} = (T_${i + 1} - T_${i} + T_${i + 2} - T_${i + 3}) / 2`;
+
+                    if (delay < minDelay) {
+                        minDelay = delay;
+                        minOffset = offset;
+                    }
+
+                    para.innerHTML += `
+                    ${i}: delay = ${Math.round(delay)}, offset = ${Math.round(offset)}<br>
+                    ${delayCalc}<br>
+                    ${offsetCalc}<br>
+                    `;
+                }
+
+
+                if (steps % (pingRate * 2 + 1) == 0) {
+                    // Update clock
+                    lastOffset = minOffset;
+                    t0 += minOffset;
+                    shouldReset = true;
+                }
+
+                para.innerHTML = `
+                <strong>Chosen offset:</strong> ${lastOffset}<br>
+                ${para.innerHTML}
+                `;
+
+                render();
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, 700, 800);
+                const h = 800;
+
+                // draw timelines
+                ctx.fillStyle = 'black';
+                ctx.strokeStyle = 'black';
+
+                ctx.font = '30px Arial';
+                ctx.fillText(Math.round(t0), 70, 30);
+                ctx.fillText(Math.round(t1), 470, 30);
+
+                ctx.beginPath();
+                ctx.moveTo(100, 100);
+                ctx.lineTo(100, h);
+                ctx.stroke();
+                ctx.closePath();
+
+                ctx.beginPath();
+                ctx.moveTo(500, 100);
+                ctx.lineTo(500, h);
+                ctx.stroke();
+                ctx.closePath();
+
+                // draw messages
+                for (let i = 0; i < stamps.length; i += 4) {
+
+                    ctx.fillStyle = 'blue';
+                    ctx.font = '24px Arial';
+                    ctx.fillText(`T_${i}: ${Math.round(stamps[i])}`, 0, stamps[i] + h - t0);
+                    ctx.fillText(`T_${i + 1}: ${Math.round(stamps[i + 1])}`, 520, stamps[i + 1] + h - t0);
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'blue';
+                    ctx.moveTo(100, stamps[i] + h - t0);
+                    ctx.lineTo(500, stamps[i + 1] + h - t0);
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    ctx.fillStyle = 'red';
+                    ctx.fillText(`T_${i + 2}: ${Math.round(stamps[i + 2])}`, 520, stamps[i + 2] + h - t0);
+                    ctx.fillText(`T_${i + 3}: ${Math.round(stamps[i + 3])}`, 0, stamps[i + 3] + h - t0);
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'red';
+                    ctx.moveTo(500, stamps[i + 2] + h - t0);
+                    ctx.lineTo(100, stamps[i + 3] + h - t0);
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+            }
+
+            step();
+        </script>
+    </body>
+</html>
